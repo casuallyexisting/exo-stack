@@ -1,1 +1,4 @@
 avsrc/*
+config.json
+vocal_output.wav
+__pycache__

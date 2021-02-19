@@ -13,14 +13,15 @@ import numpy as np
 import soundfile as sf
 import librosa
 import argparse
+import json
 import torch
 import sys
 from audioread.exceptions import NoBackendError
 
-# pretrained, lys_model
-model = 'lys_model'
+cfg = json.load(open("config.json"))
+model = cfg['vocal_checkpoint']
 
-def generate(audio, speech):
+def generate(audio, speech, output_file_name):
     ## Info & args
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
@@ -147,7 +148,8 @@ def generate(audio, speech):
             generated_wav = encoder.preprocess_wav(generated_wav)
 
             # Play the audio (non-blocking)
-            if not args.no_sound:
+            #if not args.no_sound: # Override playing sound
+            if 1 == 2:
                 try:
                     sd.stop()
                     sd.play(generated_wav, synthesizer.sample_rate)
@@ -158,7 +160,7 @@ def generate(audio, speech):
                     raise
 
             # Save it on the disk
-            filename = "demo_output_%02d.wav" % num_generated
+            filename = output_file_name
             print(generated_wav.dtype)
             sf.write(filename, generated_wav.astype(np.float32), synthesizer.sample_rate)
             num_generated += 1

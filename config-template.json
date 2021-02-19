@@ -1,0 +1,8 @@
+{
+  "vocal_reference": "",
+  "video_reference": "",
+  "video_checkpoint": "videoEngine/checkpoints/wav2lip.pth",
+  "vocal_checkpoint": "pretrained",
+  "vocal_output": "vocal_output.wav",
+  "audio_only": 0
+}

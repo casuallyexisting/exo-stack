@@ -1,31 +1,27 @@
-import core
 from videoEngine.inference_final import main as vd
 from vocalEngine.vox import generate
 from inputEngine.stt import stt
 import AVController as av
 from threading import Thread
-from playsound import playsound
+import socket
 import warnings
-import torch
 import time
+import torch
+import json
 
-## User Vars.
-# voice to use
-voice = 'avsrc/onenacho.mp3'
-# Checkpoint for the video engine to run
-video_checkpoint = 'videoEngine/checkpoints/pretrain.pth'
-# face to use
-face = 'avsrc/src.mp4'
-# Audio output storage
-vocalFile = 'demo_output_00.wav'
+# Load Config File
+cfg = json.load(open("config.json"))
 
 ## system vars.
 avLock = False
+HOST = "127.0.0.1"
+PORT = 25077
 
 # Init.
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
 
+# Function Definitions
 def inputEngine():
     print('Listening...')
     response = stt()
@@ -36,18 +32,24 @@ def inputEngine():
 
 def processEngine(data_in):
     print('processing data in core...')
-    return core.chat(data_in, 'INTERFACE')
-    return data_in
+    sock = socket.socket()
+    sock.connect((HOST, PORT))
+    outbound_message = 'STACK://' + data_in
+    sock.sendall(outbound_message.encode('utf-8'))
+    data = sock.recv(16384)
+    ai_response = data.decode()
+    sock.close()
+    return ai_response
 
 def vocalEngine(data_in):
     print('Vocalizing data...')
-    generate(voice, data_in)
+    generate(cfg['vocal_reference'], data_in, cfg['vocal_output'])
 
 def videoEngine(data_in):
     global avLock
     avLock = True
     print('Visualizing data...')
-    av.playFile(vd(video_checkpoint, face, data_in))
+    av.playFile(vd(cfg['video_checkpoint'], cfg['video_reference'], data_in))
     avLock = False
 
 def idle():
@@ -55,20 +57,22 @@ def idle():
     while True:
         if not avLock:
             avLock - True
-            av.playFile(face, False)
+            av.playFile(cfg['video_reference'], False)
             avLock = False
 
+# Main Thread
 if __name__ == '__main__':
-    #Thread(target=idle).start()
-    core.init()
+    if cfg['audio_only'] == 0:
+        Thread(target=idle).start()
     while True:
         input = inputEngine()
         input = processEngine(input)
-        time.sleep(2)
-        input = vocalEngine(input)
-        time.sleep(1)
-        playsound(vocalFile)
+        vocalEngine(input)
         torch.cuda.empty_cache()
-        print('emptying cache...')
+        time.sleep(1)
+        if cfg['audio_only'] == 0:
+            videoEngine(cfg['vocal_output'])
+            torch.cuda.empty_cache()
+        else:
+            av.audioHeadless(cfg['vocal_output'])
         time.sleep(3)
-        #videoEngine(vocalFile)
